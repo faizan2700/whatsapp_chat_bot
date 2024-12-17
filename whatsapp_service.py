@@ -1,4 +1,4 @@
-import requsts 
+import requests 
 import os 
 import dotenv  
 import requests
@@ -11,9 +11,9 @@ class WhatsAppService:
     WhatsApp API communication logic.
     """
     def __init__(self):
-        dotenv.load_dotenv() 
-        self.access_token = os.getenv('WHATSAPP_ACCESS_TOKEN') 
-        self.phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID')
+        
+        self.access_token = 'EAAPZBCStdBk0BOZCnn2er7D5HU9jjgERGRqGFe4dy6tZCNsYHIhLhGxr572MhO0kSKzfY2E7VF8FRCUVbt6sH6tZAPoSedK30Ycfjo6ZC3pVKa7v74dfSpLH77zUc9DsSgX8wKrsIdTJOnrRaPSIwlgEvXwAFO3QRGeAMHS8pZAjJVpSZCdluIMWylQr4ZCy567NJiylzIJmwwjKMAJFUZBiyoWSERVlmApTBXjMZD' 
+        self.phone_number_id = '474660259071346'
         self.base_url = f"https://graph.facebook.com/v21.0/{self.phone_number_id}/messages"
         
         if not all([self.access_token, self.phone_number_id]):
@@ -41,7 +41,8 @@ class WhatsAppService:
             "to": to_number,
             "type": "text",
             "text": {"body": message_body}
-        }
+        } 
+        print(self.base_url) 
         
         try:
             response = requests.post(
@@ -53,4 +54,10 @@ class WhatsAppService:
             return response.json()
         except requests.RequestException as e:
             print(f"Error sending message: {e}")
-            raise Exception(status_code=500, detail="Failed to send WhatsApp message")
+            raise Exception(str(e)) 
+        
+    def get_message(payload): 
+        messages = payload["entry"][0]["changes"][0]["value"]["messages"] 
+        message = [message["text"]["body"] for message in messages][0] 
+        number = payload["entry"][0]["changes"][0]["value"]["messages"][0]["from"] 
+        return number, message

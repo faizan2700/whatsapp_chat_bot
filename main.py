@@ -1,135 +1,44 @@
 import os
 from fastapi import FastAPI, Request, HTTPException
 import requests
-from dotenv import load_dotenv
+from dotenv import load_dotenv 
+from whatsapp_service import WhatsAppService 
+from ai_agent import Assistant 
 
-# Import our custom models
-from whatsapp_models import (
-    WhatsAppWebhookPayload, 
-    MessageResponse
-)
 
 # Load environment variables
-load_dotenv()
-
+load_dotenv('./.env') 
 # Create FastAPI app instance
 app = FastAPI(title="WhatsApp Echo Bot")
 
-class WhatsAppService:
-    """
-    Service responsible for handling WhatsApp messaging operations.
-    This follows the Single Responsibility Principle by encapsulating 
-    WhatsApp API communication logic.
-    """
-    def __init__(self):
-        self.access_token = os.getenv('WHATSAPP_ACCESS_TOKEN')
-        self.phone_number_id = os.getenv('WHATSAPP_PHONE_NUMBER_ID')
-        self.base_url = f"https://graph.facebook.com/v21.0/{self.phone_number_id}/messages"
-        
-        if not all([self.access_token, self.phone_number_id]):
-            raise ValueError("WhatsApp API credentials are not fully configured")
-    
-    def send_message(self, to_number: str, message_body: str) -> dict:
-        """
-        Send a message via WhatsApp API.
-        
-        Args:
-            to_number (str): Recipient's phone number
-            message_body (str): Message content to send
-        
-        Returns:
-            dict: Response from WhatsApp API
-        """
-        headers = {
-            'Authorization': f'Bearer {self.access_token}',
-            'Content-Type': 'application/json'
-        }
-        
-        payload = {
-            "messaging_product": "whatsapp",
-            "recipient_type": "individual",
-            "to": to_number,
-            "type": "text",
-            "text": {"body": message_body}
-        }
-        
-        try:
-            response = requests.post(
-                self.base_url, 
-                json=payload, 
-                headers=headers
-            )
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            print(f"Error sending message: {e}")
-            raise HTTPException(status_code=500, detail="Failed to send WhatsApp message")
-
 # Initialize WhatsApp service
 whatsapp_service = WhatsAppService()
-
+ai_agent = Assistant() 
 @app.post("/webhook")
-async def handle_webhook(payload: WhatsAppWebhookPayload):
-    """
-    Webhook endpoint to receive and process WhatsApp messages.
-    
-    This method follows the Open/Closed Principle by being 
-    open for extension (easy to add more complex logic) 
-    but closed for modification.
-    
-    Args:
-        payload (WhatsAppWebhookPayload): Incoming webhook payload
-    
-    Returns:
-        dict: Acknowledgement of message processing
-    """
-    # Validate payload and extract message details
-    if payload.object != "whatsapp_business_account":
-        raise HTTPException(status_code=400, detail="Invalid webhook payload")
-    
-    for entry in payload.entry:
-        for change in entry.changes:
-            if change.field == "messages":
-                messages = change.value.get("messages", [])
-                for msg in messages:
-                    if msg.get("type") == "text":
-                        # Echo back the same message
-                        sender_number = msg.get("from", "")
-                        message_body = msg.get("text", {}).get("body", "")
-                        
-                        # Send response using WhatsApp service
-                        whatsapp_service.send_message(
-                            to_number=sender_number, 
-                            message_body=message_body
-                        )
-    
-    return {"status": "success"}
+async def handle_webhook(request: Request):
+    body = request.json() 
+    number, message = whatsapp_service.get_message(body)  
+    # message = ai_agent.get_response(message) 
+    response = whatsapp_service.send_message(number, message) 
+    return {"status": "success", "response": response} 
 
-@app.get("/webhook")
-def verify_webhook(request: Request):
-    """
-    Verify webhook endpoint for initial setup with WhatsApp API.
-    
-    Args:
-        request (Request): Incoming HTTP request
-    
-    Returns:
-        str: Verification token or challenge
-    """
-    hub_mode = request.query_params.get('hub.mode')
-    hub_challenge = request.query_params.get('hub.challenge')
-    hub_verify_token = request.query_params.get('hub.verify_token')
-    
-    # Add your actual verification token logic here
-    if hub_mode == 'subscribe' and hub_challenge:
-        return hub_challenge
-    
-    raise HTTPException(status_code=403, detail="Verification failed") 
+@app.get("/webhook") 
+async def verify_webhook(request: Request):
+    mode = request.query_params.get("hub.mode")
+    token = request.query_params.get("hub.verify_token")
+    challenge = request.query_params.get("hub.challenge") 
+    if mode == "subscribe" and token == os.getenv("WHATSAPP_VERIFY_TOKEN"):
+        return {"status": "success", "challenge": challenge}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid request") 
+
+
 
 @app.post("/send_message") 
-async def send_message(message_request: MessageResponse):
-    message = message_request.message 
-    to_number = message_request.to_number 
+async def send_message(message_request: Request):
+    body = await message_request.json() 
+    message = body.get("message") 
+    to_number = body.get("to_number") 
     response = whatsapp_service.send_message(to_number, message) 
     return { "status": "success", "response": response }
 
