@@ -4,7 +4,7 @@ import requests
 from dotenv import load_dotenv 
 from whatsapp_service import WhatsAppService 
 from ai_agent import Assistant  
-from app import app 
+from main import app 
 
 
 # Load environment variables
