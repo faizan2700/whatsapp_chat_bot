@@ -3,18 +3,19 @@ from fastapi import FastAPI, Request, HTTPException
 import requests
 from dotenv import load_dotenv 
 from whatsapp_service import WhatsAppService 
-from ai_agent import Assistant 
+from ai_agent import Assistant  
+from app import app 
 
 
 # Load environment variables
 load_dotenv('./.env') 
 # Create FastAPI app instance
-app = FastAPI(title="WhatsApp Echo Bot")
+app1 = FastAPI(title="WhatsApp Echo Bot")
 
 # Initialize WhatsApp service
 whatsapp_service = WhatsAppService()
 ai_agent = Assistant() 
-@app.post("/webhook")
+@app1.post("/webhook")
 async def handle_webhook(request: Request):
     body = request.json() 
     number, message = whatsapp_service.get_message(body)  
@@ -22,7 +23,7 @@ async def handle_webhook(request: Request):
     response = whatsapp_service.send_message(number, message) 
     return {"status": "success", "response": response} 
 
-@app.get("/webhook") 
+@app1.get("/webhook") 
 async def verify_webhook(request: Request):
     mode = request.query_params.get("hub.mode")
     token = request.query_params.get("hub.verify_token")
@@ -34,7 +35,7 @@ async def verify_webhook(request: Request):
 
 
 
-@app.post("/send_message") 
+@app1.post("/send_message") 
 async def send_message(message_request: Request):
     body = await message_request.json() 
     message = body.get("message") 
