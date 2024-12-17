@@ -29,5 +29,8 @@ if __name__=='__main__':
     assistant = Assistant()
     while True:
         user_input = input("You: ")
-        response = assistant.get_response(user_input)
-        print(f"AI: {response}") 
+        response = assistant.get_response(user_input) 
+        try: 
+            print(f"AI: {response[0].get('generated_text')}") 
+        except Exception as error: 
+            print(f'AI unavailable: {error}') 
