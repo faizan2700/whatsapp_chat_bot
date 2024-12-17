@@ -4,6 +4,7 @@ import requests
 from dotenv import load_dotenv 
 from whatsapp_service import WhatsAppService 
 from ai_agent import Assistant  
+from fastapi.responses import HTMLResponse 
 
 
 
@@ -47,6 +48,9 @@ async def send_message(message_request: Request):
 @app.get('/home') 
 async def home(request: Request): 
     return {'message': 'Hello World'} 
+@app.get('/') 
+async def hom1(request): 
+    return HTMLResponse('<h1>Home</h1>', status_code=200)
 
 # Main entry point for running the application
 if __name__ == "__main__":
